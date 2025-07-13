@@ -15,11 +15,12 @@ import Provider, { errors } from '../../lib/index.js'; // from 'oidc-provider';
 import MemoryAdapter from '../../lib/adapters/memory_adapter.js';
 import { stripPrivateJWKFields } from '../../test/keys.js';
 import Account from '../../example/support/account.js';
+import URL from 'url';
 
 const pkg = JSON.parse(
   readFileSync(path.resolve(dirname(import.meta.url), '../../package.json'), {
     encoding: 'utf-8',
-  }),
+  })
 );
 
 const __dirname = dirname(import.meta.url);
@@ -30,8 +31,16 @@ const ALGS = ['PS256'];
 const clientAuthMethods = ['private_key_jwt', 'self_signed_tls_client_auth'];
 
 const {
-  client: { jwks: { keys: [JWK_ONE] } },
-  client2: { jwks: { keys: [JWK_TWO] } },
+  client: {
+    jwks: {
+      keys: [JWK_ONE],
+    },
+  },
+  client2: {
+    jwks: {
+      keys: [JWK_TWO],
+    },
+  },
 } = JSON.parse(readFileSync(path.join(__dirname, 'plan.json')));
 
 function jwk(metadata, key) {
@@ -42,17 +51,23 @@ function jwk(metadata, key) {
 }
 
 function pkjwt(metadata, key) {
-  return jwk({
-    ...metadata,
-    token_endpoint_auth_method: 'private_key_jwt',
-  }, key);
+  return jwk(
+    {
+      ...metadata,
+      token_endpoint_auth_method: 'private_key_jwt',
+    },
+    key
+  );
 }
 
 function mtlsAuth(metadata, key) {
-  return jwk({
-    ...metadata,
-    token_endpoint_auth_method: 'self_signed_tls_client_auth',
-  }, key);
+  return jwk(
+    {
+      ...metadata,
+      token_endpoint_auth_method: 'self_signed_tls_client_auth',
+    },
+    key
+  );
 }
 
 function dPoP(metadata) {
@@ -84,13 +99,15 @@ function jarm(metadata) {
 }
 
 function fapi1(metadata) {
-  return mtlsPoP(jar({
-    ...metadata,
-    default_acr_values: ['urn:mace:incommon:iap:silver'],
-    grant_types: ['implicit', 'authorization_code', 'refresh_token'],
-    response_types: ['code', 'code id_token'],
-    redirect_uris: ['https://rp.example.com/cb'],
-  }));
+  return mtlsPoP(
+    jar({
+      ...metadata,
+      default_acr_values: ['urn:mace:incommon:iap:silver'],
+      grant_types: ['implicit', 'authorization_code', 'refresh_token'],
+      response_types: ['code', 'code id_token'],
+      redirect_uris: ['https://rp.example.com/cb'],
+    })
+  );
 }
 
 function fapi2(metadata) {
@@ -155,9 +172,7 @@ const adapter = (name) => {
       }
 
       if (version === '2.0') {
-        const {
-          1: spec, 2: clientAuth, 3: constrain, 4: num,
-        } = rest;
+        const { 1: spec, 2: clientAuth, 3: constrain, 4: num } = rest;
         if (length !== 5) {
           return orig.call(this, id);
         }
@@ -230,14 +245,7 @@ const adapter = (name) => {
         });
 
         const {
-          payload: {
-            client_id: clientId,
-            sub: accountId,
-            aud,
-            iss,
-            cnf,
-            ...payload
-          },
+          payload: { client_id: clientId, sub: accountId, aud, iss, cnf, ...payload },
         } = verified;
 
         return {
@@ -264,7 +272,9 @@ const fapi = new Provider(ISSUER, {
     version: [
       pkg.version,
       process.env.HEROKU_SLUG_COMMIT ? process.env.HEROKU_SLUG_COMMIT.slice(0, 7) : undefined,
-    ].filter(Boolean).join('-'),
+    ]
+      .filter(Boolean)
+      .join('-'),
   },
   routes: {
     userinfo: '/accounts',
@@ -299,8 +309,22 @@ const fapi = new Provider(ISSUER, {
     address: ['address'],
     email: ['email', 'email_verified'],
     phone: ['phone_number', 'phone_number_verified'],
-    profile: ['birthdate', 'family_name', 'gender', 'given_name', 'locale', 'middle_name', 'name',
-      'nickname', 'picture', 'preferred_username', 'profile', 'updated_at', 'website', 'zoneinfo'],
+    profile: [
+      'birthdate',
+      'family_name',
+      'gender',
+      'given_name',
+      'locale',
+      'middle_name',
+      'name',
+      'nickname',
+      'picture',
+      'preferred_username',
+      'profile',
+      'updated_at',
+      'website',
+      'zoneinfo',
+    ],
   },
   clientDefaults: {
     authorization_signed_response_alg: 'PS256',
@@ -405,7 +429,10 @@ const fapi = new Provider(ISSUER, {
   },
 });
 
-const clientJwtAuthExpectedAudience = Object.getOwnPropertyDescriptor(fapi.OIDCContext.prototype, 'clientJwtAuthExpectedAudience').value;
+const clientJwtAuthExpectedAudience = Object.getOwnPropertyDescriptor(
+  fapi.OIDCContext.prototype,
+  'clientJwtAuthExpectedAudience'
+).value;
 Object.defineProperty(fapi.OIDCContext.prototype, 'clientJwtAuthExpectedAudience', {
   value() {
     const acceptedAudiences = clientJwtAuthExpectedAudience.call(this);
@@ -427,7 +454,11 @@ Object.defineProperty(fapi.Client.prototype, 'redirectUriAllowed', {
     if (!parsed) return false;
     const { origin, pathname, search } = parsed;
 
-    return (LOCAL_SUITE_ORIGINS.has(origin) || SUITE_ORIGINS.test(origin)) && pathname.endsWith('/callback') && (search === '' || search === '?dummy1=lorem&dummy2=ipsum');
+    return (
+      (LOCAL_SUITE_ORIGINS.has(origin) || SUITE_ORIGINS.test(origin)) &&
+      pathname.endsWith('/callback') &&
+      (search === '' || search === '?dummy1=lorem&dummy2=ipsum')
+    );
   },
 });
 
@@ -442,12 +473,14 @@ fapi.interactionResult = function patchedInteractionResult(...args) {
 
 const directives = helmet.contentSecurityPolicy.getDefaultDirectives();
 delete directives['form-action'];
-const pHelmet = promisify(helmet({
-  contentSecurityPolicy: {
-    useDefaults: false,
-    directives,
-  },
-}));
+const pHelmet = promisify(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: false,
+      directives,
+    },
+  })
+);
 
 fapi.use(async (ctx, next) => {
   if (ctx.path === '/ciba-sim') {
@@ -475,9 +508,13 @@ fapi.use(async (ctx, next) => {
         grant.addResourceScope(indicator, request.params.scope);
       }
       await grant.save();
-      await fapi.backchannelResult(request, grant, { acr: 'urn:mace:incommon:iap:silver' }).catch(() => {});
+      await fapi
+        .backchannelResult(request, grant, { acr: 'urn:mace:incommon:iap:silver' })
+        .catch(() => {});
     } else {
-      await fapi.backchannelResult(request, new errors.AccessDenied('end-user cancelled request')).catch(() => {});
+      await fapi
+        .backchannelResult(request, new errors.AccessDenied('end-user cancelled request'))
+        .catch(() => {});
     }
 
     ctx.body = { done: true };
@@ -509,9 +546,17 @@ if (process.env.NODE_ENV === 'production') {
 
       switch (ctx.oidc?.route) {
         case 'discovery': {
-          ['token', 'userinfo', 'pushed_authorization_request', 'backchannel_authentication'].forEach((endpoint) => {
+          [
+            'token',
+            'userinfo',
+            'pushed_authorization_request',
+            'backchannel_authentication',
+          ].forEach((endpoint) => {
             if (ctx.body[`${endpoint}_endpoint`].startsWith(ISSUER)) {
-              ctx.body[`${endpoint}_endpoint`] = ctx.body[`${endpoint}_endpoint`].replace('https://', 'https://mtls.');
+              ctx.body[`${endpoint}_endpoint`] = ctx.body[`${endpoint}_endpoint`].replace(
+                'https://',
+                'https://mtls.'
+              );
             }
           });
           break;
@@ -532,15 +577,20 @@ if (process.env.NODE_ENV === 'production') {
 
   fapi.listen(PORT);
 } else {
-  const server = https.createServer({
-    requestCert: true,
-    rejectUnauthorized: false,
-    key: selfsigned.private,
-    cert: selfsigned.cert,
-  }, fapi.callback());
+  const server = https.createServer(
+    {
+      requestCert: true,
+      rejectUnauthorized: false,
+      key: selfsigned.private,
+      cert: selfsigned.cert,
+    },
+    fapi.callback()
+  );
 
   server.listen(PORT, () => {
-    console.log(`application is listening on port ${PORT}, check its /.well-known/openid-configuration`);
+    console.log(
+      `application is listening on port ${PORT}, check its /.well-known/openid-configuration`
+    );
     process.on('SIGINT', () => {
       process.exit(0);
     });

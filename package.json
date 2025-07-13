@@ -1,5 +1,5 @@
 {
-  "name": "oidc-provider",
+  "name": "@troplo/oidc-provider",
   "version": "9.2.0",
   "description": "OAuth 2.0 Authorization Server implementation for Node.js with OpenID Connect",
   "keywords": [
@@ -38,59 +38,28 @@
     "server"
   ],
   "homepage": "https://github.com/panva/node-oidc-provider",
-  "repository": "panva/node-oidc-provider",
+  "repository": "Troplo/node-oidc-provider",
   "funding": {
     "url": "https://github.com/sponsors/panva"
   },
   "license": "MIT",
   "author": "Filip Skokan <panva.ip@gmail.com>",
-  "type": "module",
-  "main": "lib/index.js",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "require": "./dist/index.js",
+    "import": "./dist/index.mjs"
+  },
   "files": [
     "lib"
   ],
   "scripts": {
     "format": "eslint lib example certification test docs --fix",
     "test": "node ./test/run",
-    "test-ci": "node ./test/ci"
-  },
-  "dependencies": {
-    "@koa/cors": "^5.0.0",
-    "@koa/router": "^13.1.1",
-    "debug": "^4.4.1",
-    "eta": "^3.5.0",
-    "jose": "^6.0.11",
-    "jsesc": "^3.1.0",
-    "koa": "^3.0.0",
-    "nanoid": "^5.1.5",
-    "oidc-token-hash": "^5.1.0",
-    "quick-lru": "^7.0.1",
-    "raw-body": "^3.0.0"
-  },
-  "devDependencies": {
-    "@fastify/middie": "^9.0.3",
-    "@hapi/hapi": "^21.4.0",
-    "@koa/ejs": "^5.1.0",
-    "base64url": "^3.0.1",
-    "chai": "^5.2.0",
-    "desm": "^1.3.1",
-    "eslint": "^8.57.1",
-    "eslint-config-airbnb-base": "^15.0.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-redos": "^4.5.0",
-    "express": "^5.1.0",
-    "fastify": "^5.4.0",
-    "helmet": "^8.1.0",
-    "koa-body": "^6.0.1",
-    "koa-mount": "^4.2.0",
-    "lodash": "^4.17.21",
-    "mocha": "^11.7.1",
-    "moment": "^2.30.1",
-    "openid-client": "^6.6.2",
-    "selfsigned": "^2.4.1",
-    "sinon": "^21.0.0",
-    "supertest": "^7.1.1",
-    "timekeeper": "^2.3.1",
-    "undici": "^7.11.0"
+    "test-ci": "node ./test/ci",
+    "build": "tsup lib/index.js --format esm,cjs",
+    "dev": "tsup lib/index.js --format esm,cjs --watch --sourcemap"
   }
 }
